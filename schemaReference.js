@@ -1,3 +1,5 @@
+
+// Formatted Script
 const document = {
     bookmarks: [
       {
@@ -108,4 +110,17 @@ const document = {
     ],
     templates: [] // Required: List of internal templates for GUI host (array)
 };
+// The Raw PDF 
+const docRaw = {
+  pdfRaw: {},
+  pageRaw: [],
+  pageLineRaw: [[]],
+  pageLineCharRaw: [[[]]],
+  sceneToPage: [[{ // simply a way to associated which scenes are on which page before we start cleaning lines and parsing scenes
+      id: "",
+      page: 0,
+      line: 0,
+      text: "",
+  } ]],
+}
   
