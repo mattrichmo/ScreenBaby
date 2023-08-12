@@ -4,7 +4,7 @@ import chalk from 'chalk';
 import { v4 as uuidv4 } from 'uuid'; // Import the UUID library
 import { createObjectCsvWriter as createCsvWriter } from 'csv-writer';
 
-const PDF_FILE = './scripts/script.pdf';
+const PDF_FILE = './scripts/kosi.pdf';
 
 const document = {
     bookmarks: [
@@ -132,17 +132,44 @@ const docRaw = {
         line: 0,
         text: "",
     } ]],
-}
+};
 const docParse = {
     pageCleaned: [],
+    sceneCleaned: [[]],
     pageLineCleaned: [[]],
     pageLineCharCleaned: [[[]]],
-}
+};
 const sceneParse = {
-    scene: [],
-}
-
-
+    scene: [
+      {
+        id: "",
+        page: 0,
+        line: 0,
+        text: "",
+        heading: {
+            context: "",
+            setting: "",
+            sequence: "",
+            prodNumber: "",
+        },
+        content: [],
+        elements: [
+            {
+            id: "",
+            title: "",
+            content: "",
+            },
+        ]
+      }
+    ]
+};
+const elementParse = {
+    element: [[[
+        {id: "",
+        title: "",
+        content: "",
+    }]]]
+};
 async function loadPdf(filePath) {
     const dataBuffer = fs.readFileSync(filePath);
     let pdfData;
@@ -181,7 +208,7 @@ async function loadPdf(filePath) {
             }
         });
         docRaw.sceneToPage[pageIndex] = scenesOnPage;
-        console.log(chalk.dim(`Scenes: ${sceneCount}`));
+        /* console.log(chalk.dim(`Scenes: ${sceneCount}`));
         console.log(chalk.dim(`Characters: ${charCount}`));
         console.log(chalk.dim('Page Content:\n\n'));
         lines.forEach((line, lineIndex) => {
@@ -191,10 +218,9 @@ async function loadPdf(filePath) {
         scenesOnPage.forEach((scene, sceneIndex) => {
             console.log(chalk.dim(`${sceneIndex + 1}: `) + scene.text);
         });
-        console.log('\n');
+        console.log('\n'); */
     });
 }
-
 async function cleanPageLines() {
     const specialCharacters = ['--', '!', '?', '@', '%', '...', 'THE END'];
   
@@ -226,7 +252,7 @@ async function cleanPageLines() {
     docParse.pageLineCleaned = cleanlines(docRaw.pageLineRaw);
     console.log(chalk.bold(`Number of cleaned pages: ${docParse.pageLineCleaned.length}`));
 }
-function groupScenes(cleanedLines, sceneParse, docRaw) {
+async function groupScenes(cleanedLines, sceneParse, docRaw) {
     const headingEnum = [
       "EXT./INT.", "EXT./INT.", "INT./EXT.", "EXT/INT",
       "INT/EXT", "INT.", "EXT.", "INT --", "EXT --"
@@ -234,19 +260,22 @@ function groupScenes(cleanedLines, sceneParse, docRaw) {
   
     let currentScene = null;
   
+    sceneParse.scene = [];
+    docRaw.sceneRaw = [];
+  
     cleanedLines.forEach((line, lineIndex) => {
-      // Check if the line contains any of the allowed headings
       const hasHeading = headingEnum.some(heading => line.includes(heading));
   
       if (hasHeading) {
-        // Start a new scene
         const sceneText = line.trim();
         const correspondingScene = docRaw.sceneToPage.find(entry => entry.text === sceneText);
-        const id = correspondingScene ? correspondingScene.id : uuidv4();
+  
+        const id = correspondingScene ? correspondingScene.id[0] : null;
+        const page = correspondingScene ? correspondingScene.page[0] : null;
   
         const scene = {
           id,
-          page: docRaw.pageRaw.length,
+          page,
           line: lineIndex + 1,
           text: line,
           content: []
@@ -255,12 +284,10 @@ function groupScenes(cleanedLines, sceneParse, docRaw) {
         docRaw.sceneRaw.push(scene);
         currentScene = scene;
       } else if (currentScene) {
-        // Add the line to the current scene's content
         currentScene.content.push(line);
       }
     });
   
-    // Print the scenes
     sceneParse.scene.forEach((scene, index) => {
       console.log(chalk.cyan(`\n#${index + 1}: ${scene.text}`));
       console.log(chalk.dim(`ID: ${scene.id}`));
@@ -274,7 +301,121 @@ function groupScenes(cleanedLines, sceneParse, docRaw) {
     });
   
     return sceneParse;
-}
+} 
+async function updateSceneHeader(scene, index) {
+    const headingEnum = [
+      "EXT./INT.", "EXT./INT.", "INT./EXT.", "EXT/INT",
+      "INT/EXT", "INT.", "EXT.", "INT --", "EXT --"
+    ];
+    
+    const timeVocab = [
+      "NIGHT", "AFTERNOON", "MORNING", "DAYS", "DAY",
+      "ANOTHER DAY", "LATER", "SUNSET"
+    ];
+    
+    const headingText = scene.text;
+    const heading = {
+      context: "",
+      setting: "",
+      sequence: "",
+      prodNumber: ""
+    };
+    
+    // Extract heading context and sequence
+    const headingMatch = headingEnum.find(heading => headingText.includes(heading));
+    if (headingMatch) {
+      heading.context = headingMatch;
+      const remainingText = headingText.replace(headingMatch, "").trim();
+      const sequenceMatch = timeVocab.find(vocab => remainingText.includes(vocab));
+      if (sequenceMatch) {
+        heading.sequence = sequenceMatch;
+        heading.setting = remainingText.replace(sequenceMatch, "").trim();
+      } else {
+        heading.setting = remainingText;
+      }
+    }
+    
+    // Extract production number
+    const lastWord = heading.setting.split(" ").pop();
+    if (lastWord && /^\d/.test(lastWord)) {
+      // Check if the production number has a mix of digits and characters
+      if (/^[0-9A-Za-z]+$/.test(lastWord)) {
+        const halfLength = Math.ceil(lastWord.length / 2);
+        heading.prodNumber = lastWord.substring(0, halfLength);
+        heading.setting = heading.setting.replace(lastWord, "").trim();
+      } else {
+        heading.prodNumber = lastWord;
+        heading.setting = heading.setting.replace(lastWord, "").trim();
+      }
+    }
+    
+    // Remove hyphen from the setting property
+    heading.setting = heading.setting.replace(/-/g, '').trim();
+    
+    scene.heading = heading;
+    
+    console.log(chalk.cyan(`\n#${index + 1}: ${scene.text}`));
+    console.log(chalk.dim(`ID: ${scene.id}`));
+    console.log(chalk.dim(`Page: ${scene.page}`));
+    console.log(chalk.dim(`Line: ${scene.line}`));
+    console.log(chalk.dim(`Text: ${scene.text}`));
+    console.log(chalk.dim(`Heading:`));
+    console.log(chalk.dim(`  Context: ${scene.heading.context}`));
+    console.log(chalk.dim(`  Setting: ${scene.heading.setting}`));
+    console.log(chalk.dim(`  Sequence: ${scene.heading.sequence}`));
+    console.log(chalk.dim(`  ProdNumber: ${scene.heading.prodNumber}`));
+    console.log(chalk.dim('Content:\n'));
+    scene.content.forEach((line, lineNumber) => {
+      console.log(chalk.dim(`${lineNumber + 1}: ${line}`));
+    });
+    
+    return scene;
+} 
+async function parseElements(scene, index) {
+    const elements = [];
+    let currentElement = null;
+    
+    scene.content.forEach((line, lineNumber) => {
+      const isCapitalWord = /^[A-Z][A-Za-z\s]*$/.test(line.trim());
+  
+      if (isCapitalWord) {
+        if (currentElement) {
+          elements.push(currentElement);
+        }
+        currentElement = {
+          title: line.trim(),
+          content: [],
+          lineNumbers: [lineNumber + scene.line]
+        };
+      } else if (currentElement) {
+        currentElement.content.push(line);
+        currentElement.lineNumbers.push(lineNumber + scene.line);
+      }
+    });
+  
+    if (currentElement) {
+      elements.push(currentElement);
+    }
+  
+    elements.forEach((element) => {
+      console.log(chalk.cyan(`\nScene ID: ${scene.id}`));
+      console.log(chalk.dim(`Page: ${scene.page}`));
+      console.log(chalk.dim(`Heading:`));
+      console.log(chalk.dim(`  Context: ${scene.heading.context}`));
+      console.log(chalk.dim(`  Setting: ${scene.heading.setting}`));
+      console.log(chalk.dim(`  Sequence: ${scene.heading.sequence}`));
+      console.log(chalk.dim(`  ProdNumber: ${scene.heading.prodNumber}`));
+      console.log(chalk.dim('\nElement:'));
+      console.log(chalk.dim(`  t: ${element.title}`));
+      console.log(chalk.dim(`  Line Number(s): ${element.lineNumbers.join(', ')}`));
+      console.log(chalk.dim(`  l:`));
+      element.content.forEach((contentLine, contentLineNumber) => {
+        console.log(chalk.dim(`${contentLineNumber + 1}: ${contentLine}`));
+      });
+    });
+  
+    return elements;
+  }
   
   
   
@@ -282,22 +423,23 @@ function groupScenes(cleanedLines, sceneParse, docRaw) {
   
 
   
-  
-
-
-
-
-
   async function parseScript(filePath) {
     // Call 'loadPdf'.
     await loadPdf(filePath);
     await cleanPageLines();
     await groupScenes(docParse.pageLineCleaned.flat(), sceneParse, docRaw);
-    //console.log ('docRaw.sceneToPage', JSON.stringify(docRaw.sceneToPage, null, 2));
+  
+    // Update scene headers
+sceneParse.scene.forEach(async (scene, index) => {
+  await updateSceneHeader(scene, index);
+  await parseElements(scene);
+});
+  
+    console.log('docRaw.sceneToPage', JSON.stringify(docRaw.sceneToPage, null, 2));
     console.log(chalk.bold.white("\n------------------------"));
     console.log(chalk.bold.white("     Script Statistics"));
     console.log(chalk.bold.white("------------------------\n"));
-
+  
     // Raw Statistics
     console.log(chalk.yellow("Raw Statistics:"));
     console.log(chalk.cyan("Number of Pages: ") + chalk.white(docRaw.pageRaw.length));
@@ -305,7 +447,7 @@ function groupScenes(cleanedLines, sceneParse, docRaw) {
     console.log(chalk.cyan("Total Characters (Raw): ") + chalk.white(docRaw.pageLineCharRaw.flat(2).length));
     console.log(chalk.cyan("Total Lines (Raw): ") + chalk.white(docRaw.pageLineRaw.flat().length));
     console.log(chalk.cyan("Total Words (Raw): ") + chalk.white(docRaw.pageLineRaw.flat().join(" ").split(/\s+/).length));
-
+  
     // Cleaned Statistics
     console.log(chalk.green("\nCleaned Statistics:"));
     console.log(chalk.cyan("Number of Pages (Cleaned): ") + chalk.white(docParse.pageLineCleaned.length));
@@ -313,9 +455,10 @@ function groupScenes(cleanedLines, sceneParse, docRaw) {
     console.log(chalk.cyan("Total Characters (Cleaned): ") + chalk.white(docParse.pageLineCharCleaned.flat(2).length));
     console.log(chalk.cyan("Total Lines (Cleaned): ") + chalk.white(docParse.pageLineCleaned.flat().length));
     console.log(chalk.cyan("Total Words (Cleaned): ") + chalk.white(docParse.pageLineCleaned.flat().join(" ").split(/\s+/).length));
-
+  
     console.log(chalk.bold.white("\n------------------------\n"));
 }
+  
 
 parseScript(PDF_FILE)
     .then(() => console.log(chalk.green("PDF parsing finished.")))
