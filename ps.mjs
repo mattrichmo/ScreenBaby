@@ -4,7 +4,7 @@ import chalk from 'chalk';
 import { v4 as uuidv4 } from 'uuid'; // Import the UUID library
 import { createObjectCsvWriter as createCsvWriter } from 'csv-writer';
 
-const PDF_FILE = './scripts/kosi.pdf';
+const PDF_FILE = './scripts/script.pdf';
 
 const document = {
     bookmarks: [
@@ -262,7 +262,7 @@ function groupScenes(cleanedLines, sceneParse, docRaw) {
   
     // Print the scenes
     sceneParse.scene.forEach((scene, index) => {
-      console.log(chalk.bold(`\nScene ${index + 1}:`));
+      console.log(chalk.cyan(`\n#${index + 1}: ${scene.text}`));
       console.log(chalk.dim(`ID: ${scene.id}`));
       console.log(chalk.dim(`Page: ${scene.page}`));
       console.log(chalk.dim(`Line: ${scene.line}`));
