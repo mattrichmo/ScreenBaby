@@ -28,6 +28,14 @@ const docRaw = {
 
 const sceneParse = {
   scenes: [{
+    heading: {
+        index: 0,
+      page: 0,
+      context: "",
+      setting: "",
+      sequence: "",
+      prodSceneNum: "",
+    },
     sceneID: "uuidv4()",
       sceneTitle: '',
       bodyRaw: '',
@@ -55,7 +63,7 @@ const sceneParse = {
   ],
 };
 
-const parseScenes = (docRaw, sceneParse) => {
+const parseScenes = async (docRaw, sceneParse) => {
     let currentScene = null;
   
     Object.values(docRaw.combinedCharLines).forEach(line => {
@@ -91,6 +99,64 @@ const parseScenes = (docRaw, sceneParse) => {
       }
     });
 };
+const cleanScenes = async (sceneParse) => {
+    sceneParse.scenes.forEach((scene) => {
+        scene.lines = scene.lines.filter((line) => {
+            const lineText = line.lineText.trim();
+            return (
+                lineText !== '' &&
+                !/^\d+\s*[\).\]]/.test(lineText) && // Remove lines starting with page numbers
+                !/^[!@#$%&]/.test(lineText) // Remove lines starting with special characters
+            );
+        });
+
+        if (scene.lines.length === 0) {
+            sceneParse.scenes.splice(sceneParse.scenes.indexOf(scene), 1);
+        }
+    });
+};
+
+const updateSceneHeaders = (sceneParse) => {
+    const contextRegex = /(EXT\.\/INT\.|INT\.\/EXT\.|EXT\/INT|INT\/EXT|INT\.|EXT\.|INT\s--|EXT\s--)/;
+    const sequenceRegex = /(NIGHT|AFTERNOON|MORNING|DAYS|DAY|ANOTHER DAY|LATER|CONTINUOUS|MOMENTS LATER|SUNSET|TWILIGHT|SAME)/;
+
+    sceneParse.scenes.forEach((scene) => {
+        scene.heading = {
+            context: "",
+            sequence: "",
+            setting: "",
+            prodSceneNum: "",
+        };
+
+        const contextMatch = scene.sceneTitle.match(contextRegex);
+        if (contextMatch) {
+            scene.heading.context = contextMatch[0];
+
+            const contextIndex = scene.sceneTitle.indexOf(contextMatch[0]);
+            const dashIndex = scene.sceneTitle.indexOf('-', contextIndex + contextMatch[0].length);
+
+            if (dashIndex !== -1) {
+                const settingText = scene.sceneTitle.substring(contextIndex + contextMatch[0].length, dashIndex).trim();
+                scene.heading.setting = settingText;
+            } else {
+                const lastSpaceIndex = scene.sceneTitle.lastIndexOf(' ');
+                const settingText = scene.sceneTitle.substring(contextIndex + contextMatch[0].length).trim();
+                scene.heading.setting = settingText;
+            }
+        }
+
+        const sequenceMatch = scene.sceneTitle.match(sequenceRegex);
+        if (sequenceMatch) {
+            scene.heading.sequence = sequenceMatch[0];
+        }
+    });
+};
+
+
+
+  
+
+
 
 
 const initialLoad = async () => {
@@ -101,11 +167,16 @@ const initialLoad = async () => {
   await parsePageLinesCharData(docRaw);
   await parseLinesCharData(docRaw);
   await parseScenes(docRaw, sceneParse);
-  //cleanScenes(sceneParse);
-    //console.log('docRaw', docRaw);
+  await cleanScenes(sceneParse);
+
+await updateSceneHeaders(sceneParse);
+  //console.log('docRaw', docRaw);
   console.log('sceneParse', sceneParse);
   sceneParse.scenes.forEach((scene, sceneIndex) => {
     console.log(chalk.bold(`SC ${sceneIndex + 1}: ${chalk.underline(scene.sceneTitle)}`));
+    console.log('Context', scene.heading.context);
+    console.log('Sequence', scene.heading.sequence);
+    console.log('Setting', scene.heading.setting);
     scene.lines.forEach((line, lineIndex) => {
       console.log(chalk.dim(`${lineIndex + 1} | `), chalk.white(line.lineText));
       //console.log(chalk.gray('cc:', line.lineChars.length, 'Scene ID:', scene.sceneID, 'Line ID:', line.lineID));
