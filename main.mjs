@@ -28,25 +28,29 @@ const docRaw = {
 
 const sceneParse = {
   scenes: [{
+    sceneID: "uuidv4()",
       sceneTitle: '',
       bodyRaw: '',
       body: [],
       lines: [{
+        lineID: "uuidv4()",
           lineText: '',
           sceneHeaderLine: 0,  // boolean for scene header. if line starts with INT. or EXT. or INT/EXT or EXT/INT then sceneHeader = 1
           importantLine: 0, // boolean for important line. If the line includes any word longer than 2 letters that is full caps, then importantLine = 1
           lineNumber: null,
+          lineChars: [
+            {
+              text: '',
+              charID: "uuidv4()",
+              x: null,
+              y: null,
+              w: null,
+              clr: null,
+              sw: null,
+            },
+          ],
         }],
-      lineChars: [
-        {
-          text: '',
-          x: null,
-          y: null,
-          w: null,
-          clr: null,
-          sw: null,
-        },
-      ],
+      
     },
   ],
 };
@@ -57,28 +61,36 @@ const parseScenes = (docRaw, sceneParse) => {
     Object.values(docRaw.combinedCharLines).forEach(line => {
       if (line.sceneHeaderLine === 1) {
         // Start a new scene
+        const sceneID = uuidv4();
         currentScene = {
+          sceneID: sceneID,
           sceneTitle: line.lineText,
           bodyRaw: '',
           body: [],
           lines: [],
-          lineChars: []
         };
         sceneParse.scenes.push(currentScene);
       } else if (currentScene) {
         // Add line to the current scene
+        const lineID = uuidv4();
+        const lineChars = line.lineChars.map(char => ({
+          ...char,
+          charID: uuidv4()
+        }));
+
         currentScene.bodyRaw += line.lineText + '\n';
         currentScene.body.push(line.lineText);
         currentScene.lines.push({
+          lineID: lineID,
           lineText: line.lineText,
           sceneHeaderLine: line.sceneHeaderLine,
           importantLine: line.importantLine,
-          lineNumber: currentScene.lines.length + 1
+          lineNumber: currentScene.lines.length + 1,
+          lineChars: lineChars,
         });
-        currentScene.lineChars.push(line.lineChars);
       }
     });
-  };
+};
 
 
 const initialLoad = async () => {
@@ -90,13 +102,13 @@ const initialLoad = async () => {
   await parseLinesCharData(docRaw);
   await parseScenes(docRaw, sceneParse);
   //cleanScenes(sceneParse);
-    console.log('docRaw', docRaw);
-  //console.log('sceneParse', sceneParse);
+    //console.log('docRaw', docRaw);
+  console.log('sceneParse', sceneParse);
   sceneParse.scenes.forEach((scene, sceneIndex) => {
     console.log(chalk.bold(`SC ${sceneIndex + 1}: ${chalk.underline(scene.sceneTitle)}`));
     scene.lines.forEach((line, lineIndex) => {
       console.log(chalk.dim(`${lineIndex + 1} | `), chalk.white(line.lineText));
-      //console.log(chalk.gray.dim('cc:'), line.lineChars.length, chalk.gray.dim('Scene ID:'), scene.id, chalk.gray.dim('Line ID:'), line.id);
+      //console.log(chalk.gray('cc:', line.lineChars.length, 'Scene ID:', scene.sceneID, 'Line ID:', line.lineID));
     });
   });
 };
