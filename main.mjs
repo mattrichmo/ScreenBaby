@@ -72,10 +72,29 @@ const parseScenes = async (docRaw, sceneParse) => {
         };
     });
 };
+const cleanScenes = (sceneParse) => {
+    const specialCharacters = ['%', '!', '#'];
+    
+    sceneParse.scenes.forEach((scene) => {
+        const cleanedLines = [];
 
+        scene.lineChars.forEach((lineObj, index) => {
+            const lineText = scene.lines[index];
 
-            
+            // Check if line is not empty, is not a number possibly followed by a period or parenthesis, and does not start with a special character
+            if (lineText.trim() !== '' && !lineText.match(/^\d+[.)]?$/) && !specialCharacters.some(char => lineText.startsWith(char))) {
+                cleanedLines.push({
+                    lineText: lineText,
+                    lineChars: lineObj.lineChars,
+                });
+            }
+        });
 
+        // Update lines and lineChars in the scene object
+        scene.lines = cleanedLines.map(lineObj => lineObj.lineText);
+        scene.lineChars = cleanedLines.map(lineObj => ({ lineText: lineObj.lineText, lineChars: lineObj.lineChars })); 
+    });
+};
 
 
 
@@ -87,6 +106,7 @@ const initialLoad = async () => {
     //await parsePagesandLines(docRaw);
     await parsePageLinesCharData(docRaw);
     await parseScenes(docRaw, sceneParse);
+    await cleanScenes(sceneParse);
     //console.log('sceneParse', JSON.stringify(sceneParse, null, 2));
     console.log('sceneParse', sceneParse);
     sceneParse.scenes.forEach((scene, sceneIndex) => {
