@@ -1,4 +1,5 @@
 import { loadPDF, readPDFToJson } from './components/LoadUtils.mjs';
+import chalk from 'chalk';
 
 
 const docRaw = {
@@ -8,8 +9,8 @@ const docRaw = {
     pagesRaw: [{
         pageRawText: "",
         pageLines: [[""]],
-        lineChars: [[{}]],
-    }],
+        pageLineChars: [[['']]]
+        }],
     rawTextJSONArray : [{}],
     combinedChar: [{}],
 
@@ -55,45 +56,75 @@ const combineCharData = (docRaw) => {
   
     docRaw.combinedChar = combinedData;
 };
-const parsePagesandLines = (docRaw) => {
-    const fullText = docRaw.combinedChar.map(charObj => charObj.text).join('');
-    const pages = fullText.split('\n\n').map(pageText => {
-      const lines = pageText.split('\n').map(lineText => {
-        const lineChars = [];
-        for (const char of lineText) {
-          lineChars.push(docRaw.combinedChar.find(charObj => charObj.text === char));
-        }
-        return lineChars;
-      });
-      return lines;
-    });
-  
-    docRaw.pagesRaw = pages;
-  };
-  
-  
-  
-  
-  
-  
-  
-  
 
-  const initialLoad = async () => {
+const parsePagesandLines = (docRaw) => {
+    const pages = docRaw.pdfRaw.text.split(/\r?\n\n/);
+    docRaw.pagesRaw = pages.map((pageRawText, pageIndex) => {
+        const lines = pageRawText.split(/\r?\n/);
+        const pageLines = lines.map((line, lineNumber) => {
+            const lineChars = line.split('').map((char) => ({ text: char }));
+            return {
+                lineNumber: lineNumber + 1,
+                lineText: line,
+                lineChars: lineChars,
+            };
+        });
+
+        return {
+            pageIndex: pageIndex + 1,
+            pageRawText: pageRawText,
+            pageLines: pageLines,
+        };
+    });
+};
+const parsePageLinesCharData = (docRaw) => {
+    const charArray = docRaw.combinedChar.map(charObj => charObj.text);
+    const pages = charArray.join('').split(/\r?\n\n/);
+
+    docRaw.pagesRaw = pages.map((pageRawText, pageIndex) => {
+        const lines = pageRawText.split(/\r?\n/);
+        const pageLines = lines.map((line, lineNumber) => {
+            const lineChars = line.split('').map((char) => {
+                const charObj = docRaw.combinedChar.find(obj => obj.text === char);
+                return charObj ? charObj : { text: char };
+            });
+            return {
+                lineNumber: lineNumber + 1,
+                lineText: line,
+                lineChars: lineChars,
+            };
+        });
+
+        return {
+            pageIndex: pageIndex + 1,
+            pageRawText: pageRawText,
+            pageLines: pageLines,
+        };
+    });
+};
+
+const initialLoad = async () => {
     await loadPDF(docRaw);
     await readPDFToJson(docRaw);
     await createCharObjects(docRaw);
     await combineCharData(docRaw);
-    await parsePagesandLines(docRaw); // Call the new function here
-    //console.log('Combined Data:', JSON.stringify(docRaw.combinedChar, null, 2));
-    //console.log('docRaw.rawTextJSONArray:', docRaw.rawTextJSONArray);
-    //console.log('pdfRawText:', docRaw.pdfRawText);
-    console.log('docRaw.pagesRaw:', docRaw.pagesRaw);
-    console.log('docRaw.rawTextJSONArray Length:', docRaw.rawTextJSONArray.length);
-    console.log('pdfRawText Length:', docRaw.pdfRawText.length);
-    console.log('Combined Data:', docRaw.combinedChar.length);
+    //await parsePagesandLines(docRaw);
+    await parsePageLinesCharData(docRaw);
+    //console.log('docRaw.pagesRaw',docRaw.pagesRaw );
 
-  };
+    //console.log('docRaw.pagesRaw', JSON.stringify(docRaw.pagesRaw, null, 2));
+docRaw.pagesRaw.forEach((page) => {
+  console.log(chalk.red(`Page ${page.pageIndex}:`));
+  page.pageLines.forEach((line) => {
+    console.log(`${chalk.dim(line.lineNumber)}: ${chalk.white(line.lineText)}`);
+    console.log(chalk.dim('char count:', line.lineChars.length));
+  });
+});
+};
+
+
+
+initialLoad();
+
   
-
-  initialLoad();
+  
