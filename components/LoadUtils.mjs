@@ -8,7 +8,7 @@ const pdf2JSON = {
 };
 
 
-const PDF_FILE = './scripts/scriptxsmall.pdf';
+const PDF_FILE = './scripts/scriptsmall.pdf';
 
 export const loadPDF = async (docRaw) => {
     try {

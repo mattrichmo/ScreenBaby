@@ -1,4 +1,5 @@
 import { loadPDF, readPDFToJson } from './components/LoadUtils.mjs';
+import { createCharObjects, combineCharData, parsePageLinesCharData  } from './components/CleanUtils.mjs';
 import chalk from 'chalk';
 
 
@@ -7,6 +8,8 @@ const docRaw = {
     pagesJSONRaw: [],
     pdfRawText: [{}],
     pagesRaw: [{
+        pageIndex: 0,
+        pageID: "", 
         pageRawText: "",
         pageLines: [[""]],
         pageLineChars: [[['']]]
@@ -15,78 +18,45 @@ const docRaw = {
     combinedChar: [{}],
 
 };
+const sceneParse = {
 
-
-
-const createCharObjects = (docRaw) => {
-  const pdfRawText = docRaw.text;
-  const pdfRawTextChars = docRaw.pdfRaw.text.split('');
-  const pdfRawTextObjects = pdfRawTextChars.map((char) => {
-    return {
-      text: char,
-      x: null,
-      y: null,
-      w: null,
-      clr: null,
-      sw: null,
-      A: '',
-    };
-  });
-  docRaw.pdfRawText = pdfRawTextObjects;
-  return pdfRawTextObjects;
+    scenes: [{
+        titleRaw: "", // the line the scene title is on
+        bodyRaw: "", // single strong of all the text in the scene
+        body: [],
+        lines: [{
+            lineText: "",
+            lineNumber: null,
+        }],
+        lineChars: [{
+            text: "",
+            x: null,
+            y: null,
+            w: null,
+            clr: null,
+            sw: null,
+        }],
+    }],
 };
 
-const combineCharData = (docRaw) => {
-    const combinedData = [];
-    let jsonIndex = 0;
-  
-    for (const charObj of docRaw.pdfRawText) {
-      if (charObj.text.trim() === '' || charObj.text === '\n') {
-        combinedData.push(charObj);
-      } else if (jsonIndex < docRaw.rawTextJSONArray.length) {
-        combinedData.push({
-          ...docRaw.rawTextJSONArray[jsonIndex],
-          text: charObj.text,
-        });
-        jsonIndex++;
-      } else {
-        combinedData.push(charObj);
-      }
-    }
-  
-    docRaw.combinedChar = combinedData;
-};
 
-const parsePagesandLines = (docRaw) => {
-    const pages = docRaw.pdfRaw.text.split(/\r?\n\n/);
-    docRaw.pagesRaw = pages.map((pageRawText, pageIndex) => {
-        const lines = pageRawText.split(/\r?\n/);
-        const pageLines = lines.map((line, lineNumber) => {
-            const lineChars = line.split('').map((char) => ({ text: char }));
-            return {
-                lineNumber: lineNumber + 1,
-                lineText: line,
-                lineChars: lineChars,
-            };
-        });
 
-        return {
-            pageIndex: pageIndex + 1,
-            pageRawText: pageRawText,
-            pageLines: pageLines,
-        };
-    });
-};
-const parsePageLinesCharData = (docRaw) => {
+
+const parseScenes = async (docRaw, sceneParse) => {
+    const headingEnum = [
+        "EXT./INT.", "EXT./INT.", "INT./EXT.", "EXT/INT",
+        "INT/EXT", "INT.", "EXT.", "INT --", "EXT --"
+    ];
+
     const charArray = docRaw.combinedChar.map(charObj => charObj.text);
-    const pages = charArray.join('').split(/\r?\n\n/);
-
-    docRaw.pagesRaw = pages.map((pageRawText, pageIndex) => {
-        const lines = pageRawText.split(/\r?\n/);
-        const pageLines = lines.map((line, lineNumber) => {
-            const lineChars = line.split('').map((char) => {
-                const charObj = docRaw.combinedChar.find(obj => obj.text === char);
-                return charObj ? charObj : { text: char };
+    //join the characters then split if a line includes any of the headingEnum
+    const scenes = charArray.join('').split(new RegExp(headingEnum.join('|'), 'g'));
+    sceneParse.scenes = scenes.map((scene, sceneIndex) => {
+        const lines = scene.split(/\r?\n/);
+        const lineChars = lines.map((line, lineNumber) => {
+            const lineChars = line.split('').map((charItem) => { // Change 'char' to 'charItem' here
+                const charObj = docRaw.combinedChar.find(obj => obj.text === charItem);
+                return charObj ? charObj : { text: charItem };
             });
             return {
                 lineNumber: lineNumber + 1,
@@ -94,14 +64,20 @@ const parsePageLinesCharData = (docRaw) => {
                 lineChars: lineChars,
             };
         });
-
         return {
-            pageIndex: pageIndex + 1,
-            pageRawText: pageRawText,
-            pageLines: pageLines,
+            titleRaw: lines[0],
+            bodyRaw: scene,
+            lines: lines,
+            lineChars: lineChars,
         };
     });
 };
+
+
+            
+
+
+
 
 const initialLoad = async () => {
     await loadPDF(docRaw);
@@ -110,17 +86,20 @@ const initialLoad = async () => {
     await combineCharData(docRaw);
     //await parsePagesandLines(docRaw);
     await parsePageLinesCharData(docRaw);
-    //console.log('docRaw.pagesRaw',docRaw.pagesRaw );
+    await parseScenes(docRaw, sceneParse);
+    //console.log('sceneParse', JSON.stringify(sceneParse, null, 2));
+    console.log('sceneParse', sceneParse);
+    sceneParse.scenes.forEach((scene, sceneIndex) => {
+        console.log(chalk.bold(`Scene ${sceneIndex + 1}: ${chalk.underline(scene.titleRaw)}`));
+        scene.lineChars.forEach((line, lineIndex) => {
+            console.log(chalk.dim(`Line ${lineIndex + 1}:`), chalk.white(line.lineText));
+            console.log(chalk.gray.dim('cc:'), line.lineChars.length);
+        });
+    });
 
-    //console.log('docRaw.pagesRaw', JSON.stringify(docRaw.pagesRaw, null, 2));
-docRaw.pagesRaw.forEach((page) => {
-  console.log(chalk.red(`Page ${page.pageIndex}:`));
-  page.pageLines.forEach((line) => {
-    console.log(`${chalk.dim(line.lineNumber)}: ${chalk.white(line.lineText)}`);
-    console.log(chalk.dim('char count:', line.lineChars.length));
-  });
-});
+
 };
+
 
 
 
