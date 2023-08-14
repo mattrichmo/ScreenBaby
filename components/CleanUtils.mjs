@@ -84,5 +84,32 @@ export const parsePageLinesCharData = (docRaw) => {
         };
     });
 };
+export const parseLinesCharData = (docRaw) => {
+    const charArray = docRaw.combinedChar.map(charObj => charObj.text);
+    const lines = charArray.join('').split(/\r?\n/);
+
+    docRaw.combinedCharLines = lines.map((line, lineNumber) => {
+        const lineChars = line.split('').map((char) => {
+            const charObj = docRaw.combinedChar.find(obj => obj.text === char);
+            return charObj ? charObj : { text: char };
+        });
+
+        // Calculate sceneHeaderLine
+        const isSceneHeader = /^(INT\.|EXT\.|INT\/EXT|EXT\/INT)/.test(line);
+        // Calculate importantLine
+        const words = line.split(/\s+/);
+        const isImportant = words.some(word => /^[A-Z]{3,}$/.test(word));
+
+        return {
+            lineNumber: lineNumber + 1,
+            lineText: line,
+            lineChars: lineChars,
+            sceneHeaderLine: isSceneHeader ? 1 : 0,
+            importantLine: isImportant ? 1 : 0,
+        };
+    });
+};
+
+
 
 

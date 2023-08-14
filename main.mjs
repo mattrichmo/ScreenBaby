@@ -1,5 +1,5 @@
 import { loadPDF, readPDFToJson } from './components/LoadUtils.mjs';
-import { createCharObjects, combineCharData, parsePageLinesCharData } from './components/CleanUtils.mjs';
+import { createCharObjects, combineCharData, parsePageLinesCharData, parseLinesCharData } from './components/CleanUtils.mjs';
 import chalk from 'chalk';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -18,20 +18,25 @@ const docRaw = {
   ],
   rawTextJSONArray: [{}],
   combinedChar: [{}],
-};
+  combinedCharLines:{
+    lineText: '',
+    sceneHeaderLine: 0,  // boolean for scene header. if line starts with INT. or EXT. or INT/EXT or EXT/INT then sceneHeader = 1
+    importantLine: 0, // boolean for important line. If the line includes any word longer than 2 letters that is full caps, then importantLine = 1
+    lineChars: [{}]
+  },
+  }
 
 const sceneParse = {
-  scenes: [
-    {
-      titleRaw: '',
+  scenes: [{
+      sceneTitle: '',
       bodyRaw: '',
       body: [],
-      lines: [
-        {
+      lines: [{
           lineText: '',
+          sceneHeaderLine: 0,  // boolean for scene header. if line starts with INT. or EXT. or INT/EXT or EXT/INT then sceneHeader = 1
+          importantLine: 0, // boolean for important line. If the line includes any word longer than 2 letters that is full caps, then importantLine = 1
           lineNumber: null,
-        },
-      ],
+        }],
       lineChars: [
         {
           text: '',
@@ -47,75 +52,34 @@ const sceneParse = {
 };
 
 const parseScenes = (docRaw, sceneParse) => {
-  const headingEnum = [
-    'EXT./INT.',
-    'EXT./INT.',
-    'INT./EXT.',
-    'EXT/INT',
-    'INT/EXT',
-    'INT.',
-    'EXT.',
-    'INT --',
-    'EXT --',
-  ];
-
-  const charArray = docRaw.combinedChar.map((charObj) => charObj.text);
-  const scenes = charArray
-    .join('')
-    .split(new RegExp(headingEnum.join('|'), 'g'))
-    .map((scene, sceneIndex) => {
-      const sceneId = uuidv4();
-      const lines = scene
-        .split(/\r?\n/)
-        .map((line, lineNumber) => {
-          const lineId = uuidv4();
-          const lineChars = line.split('').map((charItem) => {
-            const charObj = docRaw.combinedChar.find((obj) => obj.text === charItem);
-            return charObj ? { ...charObj, id: uuidv4(), lineId: lineId, sceneId: sceneId } : { text: charItem, id: uuidv4(), lineId: lineId, sceneId: sceneId };
-          });
-
-          return {
-            id: lineId,
-            sceneId: sceneId,
-            lineNumber: lineNumber + 1,
-            lineText: line,
-            lineChars: lineChars,
-          };
+    let currentScene = null;
+  
+    Object.values(docRaw.combinedCharLines).forEach(line => {
+      if (line.sceneHeaderLine === 1) {
+        // Start a new scene
+        currentScene = {
+          sceneTitle: line.lineText,
+          bodyRaw: '',
+          body: [],
+          lines: [],
+          lineChars: []
+        };
+        sceneParse.scenes.push(currentScene);
+      } else if (currentScene) {
+        // Add line to the current scene
+        currentScene.bodyRaw += line.lineText + '\n';
+        currentScene.body.push(line.lineText);
+        currentScene.lines.push({
+          lineText: line.lineText,
+          sceneHeaderLine: line.sceneHeaderLine,
+          importantLine: line.importantLine,
+          lineNumber: currentScene.lines.length + 1
         });
-
-      return {
-        id: sceneId,
-        titleRaw: lines[0].lineText,
-        bodyRaw: scene,
-        lines: lines,
-      };
-    });
-
-  sceneParse.scenes = scenes;
-};
-
-const cleanScenes = (sceneParse) => {
-  const specialCharacters = ['%', '!', '#'];
-
-  sceneParse.scenes.forEach((scene) => {
-    const cleanedLines = [];
-
-    scene.lines.forEach((lineObj, index) => {
-      const lineText = lineObj.lineText;
-
-      // Check if line is not empty, is not a number possibly followed by a period or parenthesis, and does not start with a special character
-      if (
-        lineText.trim() !== '' &&
-        !lineText.match(/^\d+[.)]?$/) &&
-        !specialCharacters.some((char) => lineText.startsWith(char))
-      ) {
-        cleanedLines.push(lineObj);
+        currentScene.lineChars.push(line.lineChars);
       }
     });
+  };
 
-    scene.lines = cleanedLines;
-  });
-};
 
 const initialLoad = async () => {
   await loadPDF(docRaw);
@@ -123,17 +87,17 @@ const initialLoad = async () => {
   await createCharObjects(docRaw);
   await combineCharData(docRaw);
   await parsePageLinesCharData(docRaw);
-  parseScenes(docRaw, sceneParse);
-  cleanScenes(sceneParse);
-
-  console.log('sceneParse', sceneParse);
+  await parseLinesCharData(docRaw);
+  await parseScenes(docRaw, sceneParse);
+  //cleanScenes(sceneParse);
+    console.log('docRaw', docRaw);
+  //console.log('sceneParse', sceneParse);
   sceneParse.scenes.forEach((scene, sceneIndex) => {
-    console.log(chalk.bold(`Scene ${sceneIndex + 1}: ${chalk.underline(scene.titleRaw)}`));
+    console.log(chalk.bold(`SC ${sceneIndex + 1}: ${chalk.underline(scene.sceneTitle)}`));
     scene.lines.forEach((line, lineIndex) => {
-      console.log(chalk.dim(`${lineIndex + 1} |`), chalk.white(line.lineText));
+      console.log(chalk.dim(`${lineIndex + 1} | `), chalk.white(line.lineText));
       //console.log(chalk.gray.dim('cc:'), line.lineChars.length, chalk.gray.dim('Scene ID:'), scene.id, chalk.gray.dim('Line ID:'), line.id);
     });
   });
 };
-
 initialLoad();
