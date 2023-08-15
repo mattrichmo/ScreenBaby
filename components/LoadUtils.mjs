@@ -1,14 +1,13 @@
 import fs from 'fs';
 import pdf from 'pdf-parse';
 import PDFParser from 'pdf2json';
+import { PDF_FILE } from '../main.mjs'; // Import PDF_FILE from main.mjs
+
 
 const pdf2JSON = {
     rawTextJSONArray : [{
     }]
 };
-
-
-const PDF_FILE = './scripts/kosi.pdf';
 
 export const loadPDF = async (docRaw) => {
     try {
