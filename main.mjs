@@ -5,6 +5,8 @@ import chalk from 'chalk';
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 
+// !Important. When you first run npm i, go to node_modules/pdf-parse/index.js and delete all the code in between the debugger tag. For some reason it overrides this file locastion and will say no file exists and throw an error
+
 // ************************************************************
 
 export const PDF_FILE = './scripts/bb.pdf'; // Define the PDF_FILE constant here
