@@ -109,6 +109,14 @@ const scriptCharacters = [{
     index: 0, // scene index
   }],
 }];
+const setElementType = (element) => {
+  if (element.elementRawLines[0].lineText.match(/^[A-Z][a-z]*$/)) { // Check if the first line of the element consists of a single capital word
+    element.type = 'dialogue'; // Set the type of the element to 'dialogue'
+  } else if (element.elementRawLines[0].lineText.match(/[a-z]+ [A-Z][a-z]*/)) { // Check if the first line of the element contains a capital word within a sentence of non-capital words
+    element.type = 'prop'; // Set the type of the element to 'prop'
+  }
+};
+
 const parseElements = async (sceneParse) => {
   sceneParse.scenes.forEach((scene) => {
     scene.elements = []; // Initialize the elements array for each scene
@@ -142,6 +150,12 @@ const parseElements = async (sceneParse) => {
     if (currentElement) {
       scene.elements.push(currentElement); // Push the last element to the elements array of the scene
     }
+  });
+
+  sceneParse.scenes.forEach((scene) => {
+    scene.elements.forEach((element) => {
+      setElementType(element); // Set the type of the element based on the rules you provided
+    });
   });
 
   return sceneParse;
