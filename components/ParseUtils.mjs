@@ -45,8 +45,8 @@ export const parseScenes = async (docRaw, sceneParse) => {
       }
     });
   };
-export const cleanScenes = async (sceneParse) => {
-    sceneParse.scenes.forEach((scene) => {
+  export const cleanScenes = async (sceneParse) => {
+    const cleanedScenes = sceneParse.scenes.filter((scene) => {
         const filteredLines = scene.lines.filter((line) => {
             const lineText = line.lineText.trim();
             return (
@@ -54,17 +54,24 @@ export const cleanScenes = async (sceneParse) => {
                 !/^\d+\s*[\).\]]/.test(lineText) && // Remove lines starting with page numbers
                 !/^[!@#$%&]/.test(lineText) && // Remove lines starting with special characters
                 !/^\s*$/.test(lineText) && // Remove lines that consist only of spaces
-                lineText !== '' // Remove lines that are completely empty (contain only "")
+                lineText !== '' && // Remove lines that are completely empty (contain only "")
+                !/AS BROADCAST/.test(lineText) && // Remove lines containing "AS BROADCAST"
+                !/CONTINUED:/.test(lineText) && // Remove lines containing "AS BROADCAST"
+                !/THE END/.test(lineText) // Remove lines containing "AS BROADCAST"
+
+
             );
         });
 
         scene.linesCleaned = filteredLines;
 
-        if (scene.lines.length === 0) {
-            sceneParse.scenes.splice(sceneParse.scenes.indexOf(scene), 1);
-        }
+        return filteredLines.length > 0; // Keep scenes with non-empty lines
     });
+
+    sceneParse.scenes = cleanedScenes;
 };
+
+
 export const updateSceneHeaders = (sceneParse) => {
     const contextRegex = /(EXT\.\/INT\.|INT\.\/EXT\.|EXT\/INT|INT\/EXT|INT\.|EXT\.|INT\s--|EXT\s--)/;
     const sequenceRegex = /(NIGHT|AFTERNOON|MORNING|DAYS|DAY|ANOTHER DAY|LATER|CONTINUOUS|MOMENTS LATER|SUNSET|TWILIGHT|SAME)/;
@@ -109,4 +116,43 @@ export const updateSceneHeaders = (sceneParse) => {
             }
         }
     });
+};
+export const extractScriptCharacters = (sceneParse, scriptCharacters) => {
+  sceneParse.scenes.forEach((scene, sceneIndex) => {
+      scene.linesCleaned.forEach((line, lineIndex) => {
+          const lineText = line.lineText.trim();
+          const words = lineText.split(/\s+/);
+
+          if (words.length === 1 && /^[A-Z]+$/.test(words[0])) {
+              const capitalWord = words[0];
+
+              const existingCharacterIndex = scriptCharacters.findIndex(character => character.text === capitalWord);
+
+              if (existingCharacterIndex !== -1) {
+                  const existingSceneIndex = scriptCharacters[existingCharacterIndex].sceneLocations.findIndex(sceneLoc => sceneLoc.index === sceneIndex);
+                  if (existingSceneIndex === -1) {
+                      scriptCharacters[existingCharacterIndex].sceneLocations.push({
+                          id: scene.sceneID,
+                          index: sceneIndex
+                      });
+                  }
+              } else {
+                  scriptCharacters.push({
+                      text: capitalWord,
+                      sceneLocations: [{
+                          id: scene.sceneID,
+                          index: sceneIndex
+                      }]
+                  });
+              }
+          }
+      });
+  });
+
+  // Remove the first object in the array if it exists
+  if (scriptCharacters.length > 0) {
+      scriptCharacters.shift();
+  }
+
+  return scriptCharacters; // Return the updated scriptCharacters array
 };
