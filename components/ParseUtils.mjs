@@ -13,6 +13,7 @@ export const parseScenes = async (docRaw, sceneParse) => {
           sceneTitle: line.lineText,
           bodyRaw: '',
           body: [],
+          props:[],
           lines: [], // Include the scene title line here
         };
         currentScene.lines.push({
