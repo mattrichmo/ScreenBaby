@@ -73,49 +73,57 @@ export const parseScenes = async (docRaw, sceneParse) => {
 
 
 export const updateSceneHeaders = (sceneParse) => {
-    const contextRegex = /(EXT\.\/INT\.|INT\.\/EXT\.|EXT\/INT|INT\/EXT|INT\.|EXT\.|INT\s--|EXT\s--)/;
-    const sequenceRegex = /(NIGHT|AFTERNOON|MORNING|DAYS|DAY|ANOTHER DAY|LATER|CONTINUOUS|MOMENTS LATER|SUNSET|TWILIGHT|SAME)/;
+  const contextRegex = /(EXT\.\/INT\.|INT\.\/EXT\.|EXT\/INT|INT\/EXT|INT\.|EXT\.|INT\s--|EXT\s--)/;
+  const sequenceRegex = /(NIGHT|AFTERNOON|MORNING|DAYS|DAY|ANOTHER DAY|LATER|CONTINUOUS|MOMENTS LATER|SUNSET|TWILIGHT|SAME)/;
 
-    sceneParse.scenes.forEach((scene) => {
-        scene.heading = {
-            context: "",
-            sequence: "",
-            setting: "",
-            prodSceneNum: "",
-        };
+  sceneParse.scenes.forEach((scene) => {
+    scene.heading = {
+      context: "",
+      sequence: "",
+      setting: "",
+      prodSceneNum: "",
+      headingString: "",
+    };
 
-        const headingText = scene.sceneTitle;
-        let heading = headingText;
+    const headingText = scene.sceneTitle;
+    let heading = headingText;
 
-        const contextMatch = headingText.match(contextRegex);
-        if (contextMatch) {
-            scene.heading.context = contextMatch[0];
-            heading = heading.replace(contextMatch[0], '').trim();
-        }
+    const contextMatch = headingText.match(contextRegex);
+    if (contextMatch) {
+      scene.heading.context = contextMatch[0];
+      heading = heading.replace(contextMatch[0], "").trim();
+    }
 
-        const sequenceMatch = headingText.match(sequenceRegex);
-        if (sequenceMatch) {
-            scene.heading.sequence = sequenceMatch[0];
-            heading = heading.replace(sequenceMatch[0], '').trim();
-        }
+    const sequenceMatch = headingText.match(sequenceRegex);
+    if (sequenceMatch) {
+      scene.heading.sequence = sequenceMatch[0];
+      heading = heading.replace(sequenceMatch[0], "").trim();
+    }
 
-        // Extract setting and prodSceneNum
-        const settingParts = heading.split('-');
-        if (settingParts.length > 1) {
-            scene.heading.setting = settingParts[settingParts.length - 2].trim();
-            const prodSceneNum = settingParts[settingParts.length - 1].trim();
-            scene.heading.prodSceneNum = prodSceneNum.length > 1 ? prodSceneNum.substring(0, Math.ceil(prodSceneNum.length / 2)).toUpperCase() : prodSceneNum;
-        } else {
-            scene.heading.setting = settingParts[0].trim();
-            // Extract and set prodSceneNum from last word
-            const words = scene.heading.setting.split(' ');
-            const lastWord = words[words.length - 1];
-            if (/\d/.test(lastWord)) { // Check if the word contains a number
-                const prodSceneNum = lastWord.trim();
-                scene.heading.prodSceneNum = prodSceneNum.length > 1 ? prodSceneNum.substring(0, Math.ceil(prodSceneNum.length / 2)).toUpperCase() : prodSceneNum;
-            }
-        }
-    });
+    // Extract setting and prodSceneNum
+    const settingParts = heading.split("-");
+    if (settingParts.length > 1) {
+      scene.heading.setting = settingParts[settingParts.length - 2].trim();
+      const prodSceneNum = settingParts[settingParts.length - 1].trim();
+      scene.heading.prodSceneNum =
+        prodSceneNum.length > 1
+          ? prodSceneNum.substring(0, Math.ceil(prodSceneNum.length / 2)).toUpperCase()
+          : prodSceneNum;
+    } else {
+      scene.heading.setting = settingParts[0].trim();
+      // Extract and set prodSceneNum from last word
+      const words = scene.heading.setting.split(" ");
+      const lastWord = words[words.length - 1];
+      if (/\d/.test(lastWord)) {
+        const prodSceneNum = lastWord.trim();
+        scene.heading.prodSceneNum =
+          prodSceneNum.length > 1
+            ? prodSceneNum.substring(0, Math.ceil(prodSceneNum.length / 2)).toUpperCase()
+            : prodSceneNum;
+      }
+    }
+    scene.heading.headingString = `${scene.heading.prodSceneNum} ${scene.heading.context} ${scene.heading.sequence} - ${scene.heading.setting}`;
+  });
 };
 export const extractScriptCharacters = (sceneParse, scriptCharacters) => {
   sceneParse.scenes.forEach((scene, sceneIndex) => {

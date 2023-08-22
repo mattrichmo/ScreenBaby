@@ -11,7 +11,7 @@ const db = new sqlite3.Database('mydb.sqlite3');
 
 // ************************************************************
 
-export const PDF_FILE = './scripts/bb.pdf'; // Define the PDF_FILE constant here
+export const PDF_FILE = './scripts/kosi.pdf'; // Define the PDF_FILE constant here
 
 // ************************************************************
 
@@ -133,7 +133,6 @@ const setElementType = (element) => {
   }
 };
 
-
 const setDualDialogue = (elements) => {
   let prevElement = null;
   for (const element of elements) {
@@ -173,9 +172,11 @@ const parseElements = async (sceneParse) => {
           parentScene: {
             sceneID: scene.sceneID,
             sceneIndex: sceneParse.scenes.indexOf(scene),
-            sceneTitle: scene.sceneTitle,
+            sceneTitle: scene.heading.headingString,
             sceneLineIndex: scene.linesCleaned.indexOf(line),
+
           },
+          item: '',
           type: '',
           elementRawLines: [],
           dual: 0,
@@ -348,7 +349,7 @@ const main = async (docRaw, sceneParse, scriptCharacters) => {
   sceneParse.scenes.forEach((scene, sceneIndex) => {
     const hiddenLinesCount = scene.lines.length - scene.linesCleaned.length;
 
-    console.log(chalk.bold.green(`\nSC${sceneIndex + 1}: ${chalk.underline(scene.sceneTitle)}`));
+    console.log(chalk.bold.green(`\nSC${sceneIndex + 1}: ${chalk.underline(scene.heading.headingString)}`));
     console.log();
     console.log(chalk.cyan('Scene Context:'), scene.heading.context);
     console.log(chalk.cyan('Scene Setting:'), scene.heading.setting);
