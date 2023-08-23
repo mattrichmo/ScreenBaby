@@ -216,12 +216,14 @@ const main = async (docRaw, sceneParse, scriptCharacters) => {
       console.log(chalk.cyan('Parent Scene Title:'), element.parentScene.sceneTitle);
       console.log(chalk.cyan('Type:'), element.type);
       console.log(chalk.cyan('Dual:'), element.dual);
+      console.log(chalk.yellow('Element Item:'), element.item); // Display the element item
       console.log(chalk.yellow('Element Raw Lines:'));
       element.elementRawLines.forEach((line, lineIndex) => {
         console.log(chalk.dim(`${lineIndex + 1} |`), chalk.white(line.lineText));
       });
       console.log(chalk.dim.gray('\n' + '-'.repeat(60) + '\n'));
     });
+
 
     console.log(chalk.dim.gray('-'.repeat(60) + '\n'));
   });
