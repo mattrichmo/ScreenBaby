@@ -1,11 +1,15 @@
 import chalk from 'chalk';
 
-export const prettyLog = (docRaw, sceneParse) => {
-  console.log('screens', JSON.stringify(sceneParse));
+export const prettyLog = (docRaw, script) => {
+  console.log(chalk.bold.blue('Parsed script information:\n'));
 
-  console.log(chalk.bold.blue('Parsed scene information:\n'));
+  // Display list of characters
+  console.log(chalk.bold.yellow('Characters in the script:\n'));
+  script.cast.forEach((cast, castIndex) => {
+    console.log(chalk.yellow(`Character ${castIndex + 1}: ${cast.charName}`));
+  });
 
-  sceneParse.scenes.forEach((scene, sceneIndex) => {
+  script.scenes.forEach((scene, sceneIndex) => {
     const hiddenLinesCount = scene.lines.length - scene.linesCleaned.length;
 
     console.log(chalk.bold.green(`\nSC${sceneIndex + 1}: ${chalk.underline(scene.heading.headingString)}`));
@@ -32,11 +36,6 @@ export const prettyLog = (docRaw, sceneParse) => {
     scene.props.forEach((prop, propIndex) => {
       console.log(chalk.cyan(`Prop ${propIndex + 1}:`), prop.propItem);
     });
-    console.log(chalk.bold.yellow(`Characters in SC${sceneIndex + 1}:\n`));
-    scene.cast.forEach((cast, castIndex) => {
-      console.log(chalk.yellow(`Character ${castIndex + 1}: ${cast.characterName} (${cast.characterLineCount} lines)`));
-    });
-
 
     console.log(chalk.yellow('\nScene Lines:\n'));
     scene.linesCleaned.forEach((line, lineIndex) => {
