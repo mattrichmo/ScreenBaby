@@ -163,3 +163,24 @@ export const extractScriptCharacters = (sceneParse, scriptCharacters) => {
 
   return scriptCharacters; // Return the updated scriptCharacters array
 };
+export const parseTitles = (docRaw) => {
+  for (const page of docRaw.pagesRaw) {
+    if (page.pageLines && page.pageLines[0]) {
+      const titleLine = page.pageLines[0][0].trim();
+      const match = titleLine.match(/[A-Z][A-Z]+/); // Match consecutive capital words
+      if (match) {
+        docRaw.script.scriptTitle = match[0];
+        break; // Break after finding the first title
+      }
+    }
+    if (page.pageLines && page.pageLines[1]) {
+      const titleLine = page.pageLines[1][0].trim();
+      const match = titleLine.match(/[A-Z][A-Z]+/); // Match consecutive capital words
+      if (match) {
+        docRaw.script.scriptTitle = match[0];
+        break; // Break after finding the first title
+      }
+    }
+  }
+  console.log
+}
