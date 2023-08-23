@@ -155,6 +155,26 @@ const sortElementType = (sceneParse) => {
     });
   });
 };
+const extractSceneCharacters = (screenParse) => {
+  screenParse.scenes.forEach((scene) => {
+    const characters = {};
+
+    scene.elements.forEach((element) => {
+      if (element.type === 'dialogue') {
+        const characterName = element.item;
+        if (!characters[characterName]) {
+          characters[characterName] = {
+            characterName,
+            characterLines: [],
+          };
+        }
+        characters[characterName].characterLines.push(...element.elementRawLines.map((line) => line.lineText.trim()));
+      }
+    });
+
+    scene.characters = Object.values(characters);
+  });
+};
 
 //Group Functions 
 const initialLoad = async () => {
@@ -176,6 +196,7 @@ const main = async (docRaw, sceneParse, scriptCharacters) => {
   await extractScriptCharacters(sceneParse, scriptCharacters); 
   await parseElements(sceneParse);
   await sortElementType(sceneParse);
+  await extractSceneCharacters(sceneParse);
 
   console.log('screens', JSON.stringify(sceneParse));
 
@@ -193,6 +214,10 @@ const main = async (docRaw, sceneParse, scriptCharacters) => {
     console.log(chalk.blue('Props:'))
     scene.props.forEach((prop, propIndex) => {
       console.log(chalk.cyan(`Prop ${propIndex + 1}:`), prop.propItem);
+    });
+    console.log(chalk.bold.yellow(`Characters in SC${sceneIndex + 1}:\n`));
+    scene.characters.forEach((character, characterIndex) => {
+      console.log(chalk.yellow(`Character ${characterIndex + 1}: ${character.characterName} (${character.characterLines.length} lines)`));
     });
 
 
@@ -223,6 +248,7 @@ const main = async (docRaw, sceneParse, scriptCharacters) => {
       });
       console.log(chalk.dim.gray('\n' + '-'.repeat(60) + '\n'));
     });
+
 
 
     console.log(chalk.dim.gray('-'.repeat(60) + '\n'));
