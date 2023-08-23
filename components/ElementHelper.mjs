@@ -25,25 +25,32 @@ export const setElementType = (element) => {
 
 
 export const setDualDialogue = (elements) => {
-  let prevElement = null;
-  for (const element of elements) {
+  let consecutiveDialogueCount = 0;
+  for (let i = 0; i < elements.length; i++) {
+    const element = elements[i];
     if (element.type === 'dialogue') {
-      if (prevElement && prevElement.type === 'dialogue') {
+      consecutiveDialogueCount++;
+      if (consecutiveDialogueCount > 1) {
         element.dual = 1;
-      } else {
-        let nextElement = null;
-        for (let i = elements.indexOf(element) + 1; i < elements.length; i++) {
-          if (elements[i].type === 'dialogue') {
-            nextElement = elements[i];
-            break;
-          }
-        }
-        if (nextElement && nextElement.type === 'dialogue') {
-          element.dual = 1;
-        }
+      }
+    } else {
+      consecutiveDialogueCount = 0;
+    }
+  }
+  for (let i = 0; i < elements.length; i++) {
+    const element = elements[i];
+    if (element.type === 'dialogue' && element.dual === 1) {
+      let j = i - 1;
+      while (j >= 0 && elements[j].type === 'dialogue') {
+        elements[j].dual = 1;
+        j--;
+      }
+      j = i + 1;
+      while (j < elements.length && elements[j].type === 'dialogue') {
+        elements[j].dual = 1;
+        j++;
       }
     }
-    prevElement = element;
   }
 };
 
@@ -73,6 +80,7 @@ export const parseElements = async (sceneParse) => {
           },
           item: foundItem, // Store the found item in the element
           type: '',
+          characters: [],
           elementRawLines: [],
           dual: 0,
         };
@@ -92,6 +100,7 @@ export const parseElements = async (sceneParse) => {
     scene.elements.forEach((element) => {
       setElementType(element); // Set the type of the element based on the rules you provided
     });
+    setDualDialogue(scene.elements);
   });
 
   return sceneParse;
