@@ -1,7 +1,7 @@
 import { loadPDF, readPDFToJson } from './components/LoadUtils.mjs';
 import { createCharObjects, combineCharData, parsePageLinesCharData, parseLinesCharData } from './components/CleanUtils.mjs';
 import { parseScenes, cleanScenes, updateSceneHeaders, extractScriptCharacters } from './components/ParseUtils.mjs';
-import { setElementType, setDualDialogue, parseElements } from './components/ElementHelper.mjs';
+import { parseElements } from './components/ElementHelper.mjs';
 import { prettyLog } from './components/PrettyLog.mjs';
 import { saveToDatabase } from './components/DB.mjs';
 import express from 'express';
@@ -10,7 +10,28 @@ import express from 'express';
 
 // ************************************************************
 
-export const PDF_FILE = process.argv[2] || './scripts/bb.pdf';
+
+// Command-line Interface (CLI) Arguments - 
+//The CLI accepts inputs in the format node main.mjs file.pdf when the PDF is located within the ./scripts directory.
+//In cases where the PDF is in a different location, you can provide the full file path for accurate processing.
+
+const inputArg = process.argv[2];
+const defaultPDFPath = './scripts/bb.pdf';
+let PDF_FILE = defaultPDFPath;
+
+if (inputArg) {
+  if (inputArg.startsWith('/')) {
+    PDF_FILE = inputArg;
+  } else if (!inputArg.includes('/') && !inputArg.includes('..')) {
+    PDF_FILE = `./scripts/${inputArg}`;
+  } else {
+    PDF_FILE = inputArg;
+  }
+}
+
+export { PDF_FILE };
+
+
 // ************************************************************
 
 
@@ -52,21 +73,16 @@ const sceneParse = {
     bodyRaw: '',
     body: [], // Required: Body of the scene (array)
     animals: [], // Optional: List of animals in the scene (array)
-    authors: [], // Optional: List of author IDs (array)
-    cast: [], // Optional: List of cast members (array)
-    contributors: [], // Optional: List of contributor IDs (array)
-    extra: [], // Optional: List of extra elements in the scene (array)
-    id: "", // Optional: Unique identifier for the scene (string)
+    cast: [{
+      characterName: '',
+      characterLines: [],
+      characterLineCount: 0,
+    }], // Optional: List of cast members (array)
     locations: [], // Optional: List of locations in the scene (array)
-    moods: [], // Optional: List of moods in the scene (array)
     props: [{
       propItem: '',
+      propLineLocations: [],
     }], // Optional: List of props in the scene (array)
-    sfx: [], // Optional: List of sound effects in the scene (array)
-    sounds: [], // Optional: List of sounds in the scene (array)
-    tags: [], // Optional: List of tags for the scene (array)
-    vfx: [], // Optional: List of visual effects in the scene (array)
-    wardrobe: [], // Optional: List of wardrobe items in the scene (array)
     lines: [{
       lineID: "uuidv4()",
         lineText: '',
@@ -111,20 +127,27 @@ const sceneParse = {
         sceneTitle: 'sceneparse.sceneTitle',
         sceneLineIndex: 0,
       },
-      type: '', // type of action, character, dialogue, general, parenthetical, shot, transition
+      groupType: '', // type of action, character, dialogue, general, parenthetical, shot, transition
       dual: 0, // boolean value. is 1 if multiple dialogue are present in the lines before or after 
       elementRawLines : [],
-    }],  
+      item: [{
+        name: '',
+        id: '',
+        type: '',
+        sceneLocation: 0
+      }]
+    }],
+    transitions: [{
+      item: '',
+    }],
+    dialogueLines: [{
+      char: '',
+      lines: [],
+    }]  
     },
   ],
 };
-const scriptCharacters = [{
-  text: '',
-  sceneLocations: [{
-    id: '', // uuid
-    index: 0, // scene index
-  }],
-}];
+
 const startServer = async (sceneParse) => {
  const app = express();
 
@@ -139,47 +162,104 @@ const startServer = async (sceneParse) => {
   });
 };
 
-const sortElementType = (sceneParse) => {
+const sortElementType = async (sceneParse) => {
   sceneParse.scenes.forEach((scene) => {
     const elements = scene.elements;
     elements.forEach((element) => {
-      if (element.type === 'prop') {
+      if (element.groupType === 'prop') {
         const propItems = element.elementRawLines.map((line) => line.lineText.trim());
         scene.props = propItems.map((propItem) => ({ propItem }));
       }
-      if (element.type === 'dialogue') {
+      if (element.groupType === 'dialogue') {
         const dialogueItems = element.elementRawLines.map((line) => line.lineText.trim());
         scene.cast = dialogueItems.map((dialogueItem) => ({ dialogueItem }));
       }
     });
   });
 };
-const extractSceneCharacters = (screenParse) => {
-  screenParse.scenes.forEach((scene) => {
-    const characters = {};
+const extractSceneCharacters = async (sceneParse) => {
+  sceneParse.scenes.forEach((scene) => {
+    const cast = {};
 
     scene.elements.forEach((element) => {
-      if (element.type === 'dialogue') {
-        const characterName = element.item;
-        if (!characters[characterName]) {
-          const characterLines = element.elementRawLines.map((line) => line.lineText.trim());
-          characters[characterName] = {
-            characterName,
-            characterLines,
-            characterLineCount: characterLines.length - 1,
-          };
-        } else {
-          const character = characters[characterName];
-          const newLines = element.elementRawLines.map((line) => line.lineText.trim());
-          character.characterLines.push(...newLines);
-          character.characterLineCount += newLines.length - 1;
-        }
+      if (element.groupType === 'dialogue') {
+        element.item.forEach((item) => {
+          const characterName = item.name;
+          if (!cast[characterName]) {
+            const characterLines = element.elementRawLines.map((line) => line.lineText.trim());
+            cast[characterName] = {
+              characterName,
+              characterLines,
+              characterLineCount: characterLines.length - 1,
+            };
+          } else {
+            const character = cast[characterName];
+            const newLines = element.elementRawLines.map((line) => line.lineText.trim());
+            character.characterLines.push(...newLines);
+            character.characterLineCount += newLines.length - 1;
+          }
+        });
       }
     });
 
-    scene.characters = Object.values(characters);
+    scene.cast = Object.values(cast);
   });
 };
+
+const extractDialogueLines = async (sceneParse) => {
+  sceneParse.scenes.forEach((scene) => {
+    scene.dialogueLines = []; // Initialize the dialogueLines array for each scene
+
+    scene.elements.forEach((element) => {
+      if (element.groupType === 'dialogue') {
+        const characterName = element.item[0].name;
+        const lines = element.elementRawLines
+          .slice(1) // Exclude the first line with the character name
+          .map((line) => line.lineText.trim());
+
+        const dialoguePart = {
+          char: characterName,
+          lines: lines,
+        };
+
+        scene.dialogueLines.push(dialoguePart);
+      }
+    });
+  });
+};
+
+const extractSceneTransitions = async (sceneParse) => {
+  sceneParse.scenes.forEach((scene) => {
+    scene.transitions = [];
+
+    scene.elements.forEach((element) => {
+      if (element.groupType === 'transition') {
+        const itemName = element.item[0].name;
+
+        const transitionPart = {
+          item: itemName,
+        };
+        scene.transitions.push(transitionPart);
+      }
+    });
+  });
+};
+
+const sceneDataExtraction = async (sceneParse) => {
+  await extractSceneCharacters(sceneParse);
+  await extractDialogueLines(sceneParse);
+  await extractSceneTransitions(sceneParse);
+
+
+};
+
+
+
+
+
+
+
+
 
 //Group Functions 
 const initialLoad = async () => {
@@ -195,18 +275,20 @@ const parseScenesToObject = async (docRaw, sceneParse) => {
     await cleanScenes(sceneParse);
     await updateSceneHeaders(sceneParse);
 };
-const main = async (docRaw, sceneParse, scriptCharacters) => {
+const main = async (docRaw, sceneParse, ) => {
   await initialLoad();
   await parseScenesToObject(docRaw, sceneParse);
-  await extractScriptCharacters(sceneParse, scriptCharacters); 
   await parseElements(sceneParse);
   await sortElementType(sceneParse);
   await extractSceneCharacters(sceneParse);
-  prettyLog(docRaw, sceneParse);
+  await sceneDataExtraction (sceneParse)
+   prettyLog(docRaw, sceneParse);
+
+
 
   
 
   //await saveToDatabase(sceneParse, docRaw);
 };
 
-main(docRaw, sceneParse, scriptCharacters);
+main(docRaw, sceneParse,);
