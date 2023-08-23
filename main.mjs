@@ -7,6 +7,8 @@ import { sceneDataExtraction } from './components/sceneDataExtraction.mjs';
 import { finalFormat, finalParse } from './components/FinalFormat.mjs';
 import { saveToDatabase } from './components/DB.mjs';
 import { startServer } from './components/Server.mjs';
+import util from 'util';
+
 
 
 // !Important. When you first run npm i, go to node_modules/pdf-parse/index.js and delete all the code in between the debugger tag. For some reason it overrides this file locastion and will say no file exists and throw an error
@@ -170,7 +172,11 @@ const script = {
     animals: [], // Optional: List of animals in the scene (array)
     cast: [{
       characterName: '',
-      characterLines: [],
+      characterLines: [
+        {
+
+        }
+      ],
       characterLineCount: 0,
     }], // Optional: List of cast members (array)
     locations: [], // Optional: List of locations in the scene (array)
@@ -241,19 +247,30 @@ const script = {
     }]  
     },
   ],
-  cast: [{
-    charName: '',
-    charSceneLocations: [0],
-    charLines:[
-      {
-      parentScene: [{
-        parentSceneTitle: '',
-        parentSceneIndex: '',
-        parentSceneLines: [],
-      }]
-    }
+cast: [
+    {
+      charName: '',
+      charSceneLocations: [0],
+      charLines: [
+        {
+          parentScene: [
+            {
+              parentSceneTitle: '',
+              parentSceneIndex: '',
+              parentSceneLines: [],
+            },
+          ],
+        },
+      ],
+      charAppearances: [
+        {
+          parentSceneTitle: '',
+          parentSceneIndex: 0,
+          parentSceneLines: [],
+        },
+      ],
+    },
   ],
-  }],
   docMeta: {
     numPages: 0,
     numLines: 0,
@@ -263,9 +280,9 @@ const script = {
   },
 };
 //Group Functions 
-const initialLoad = async () => {
-  await loadPDF(docRaw);
-  await readPDFToJson(docRaw);
+const initialLoad = async (PDF_FILE) => {
+  await loadPDF(docRaw, PDF_FILE);
+  await readPDFToJson(docRaw, PDF_FILE);
   await createCharObjects(docRaw);
   await combineCharData(docRaw);
 };
@@ -276,17 +293,17 @@ const parseScenesToObject = async (docRaw, sceneParse) => {
     await cleanScenes(sceneParse);
     await updateSceneHeaders(sceneParse);
 };
-const main = async (docRaw, sceneParse) => {
-  await initialLoad();
+const main = async (docRaw, sceneParse, PDF_FILE) => {
+  await initialLoad(PDF_FILE);
   await parseScenesToObject(docRaw, sceneParse);
   await parseElements(sceneParse);
   await sortElementType(sceneParse);
   await sceneDataExtraction(sceneParse);
 
   const script = await finalParse(docRaw,sceneParse);
-  await prettyLog (script);
+  //await prettyLog (script);
+  console.log(util.inspect(script, { depth: null }));
 
-  //prettyLog(docRaw, script); // Pass docRaw and script to prettyLog
   //console.log (JSON.stringify(docRaw.pagesRaw, null, 2))
 };
-main(docRaw, sceneParse,);
+main(docRaw, sceneParse, PDF_FILE);
