@@ -46,7 +46,7 @@ export const parseScenes = async (docRaw, sceneParse) => {
       }
     });
   };
-  export const cleanScenes = async (sceneParse) => {
+export const cleanScenes = async (sceneParse) => {
     const cleanedScenes = sceneParse.scenes.filter((scene) => {
         const filteredLines = scene.lines.filter((line) => {
             const lineText = line.lineText.trim();
@@ -71,8 +71,6 @@ export const parseScenes = async (docRaw, sceneParse) => {
 
     sceneParse.scenes = cleanedScenes;
 };
-
-
 export const updateSceneHeaders = (sceneParse) => {
   const contextRegex = /(EXT\.\/INT\.|INT\.\/EXT\.|EXT\/INT|INT\/EXT|INT\.|EXT\.|INT\s--|EXT\s--)/;
   const sequenceRegex = /(NIGHT|AFTERNOON|MORNING|DAYS|DAY|ANOTHER DAY|LATER|CONTINUOUS|MOMENTS LATER|SUNSET|TWILIGHT|SAME)/;

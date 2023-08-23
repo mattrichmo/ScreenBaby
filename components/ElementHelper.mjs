@@ -3,8 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 export const setElementType = (element) => {
   const firstLine = element.elementRawLines[0].lineText.trim();
 
-  if (firstLine.match(/^(FADE OUT|FADE IN|FADE TO BLACK|FADE TO WHITE|CUT TO|CUT IN|CUT TO BLACK|CUT TO WHITE|DISSOLVE TO|IRIS OUT|IRIS IN|WIPE TO|SMASH CUT TO|MATCH CUT TO|JUMP CUT TO|CUTAWAY TO|CROSSFADE TO|FADE THROUGH TO|FLASH TO|FREEZE FRAME|FADE TO SILENCE|TIME CUT TO|REVERSE CUT TO|CONTINUOUS)/)) {
-    element.groupType = 'transition';
+  if (firstLine.match(/^(FADE OUT|FADE IN|FADE TO BLACK|FADE TO WHITE|CUT TO|CUT IN|CUT TO BLACK|CUT TO WHITE|DISSOLVE TO|IRIS OUT|IRIS IN|WIPE TO|SMASH CUT TO|MATCH CUT TO|JUMP CUT TO|CUTAWAY TO|CROSSFADE TO|FADE THROUGH TO|FLASH TO|FREEZE FRAME|FADE TO SILENCE|TIME CUT TO|REVERSE CUT TO|CONTINUOUS|FADE TO RED|FADE TO BLUE|FADE TO GREEN|DISSOLVE TO BLACK|DISSOLVE TO WHITE|DISSOLVE TO RED|DISSOLVE TO BLUE|DISSOLVE TO GREEN|CUT TO CLOSE UP|CUT TO WIDE SHOT|CUT TO MEDIUM SHOT|CUT TO OVER-THE-SHOULDER|CUT TO POV|CUT TO HIGH ANGLE|CUT TO LOW ANGLE|CUT TO SLOW MOTION|CUT TO FAST MOTION|CUT TO FLASHBACK|CUT TO FLASHFORWARD|CUT TO DAY|CUT TO NIGHT|CUT TO DREAM SEQUENCE)$/)) {
+        element.groupType = 'transition';
   } else if (firstLine.match(/^[A-Z]+$/)) {
     if (firstLine.match(/[A-Z]+\!$/)) {
       element.groupType = 'action';
@@ -15,8 +15,8 @@ export const setElementType = (element) => {
     element.groupType = 'prop';
   } else if (firstLine.match(/^\s*\(\w+\)\s*$/)) {
     element.groupType = 'parenthesis';
-  } else if (firstLine.match(/^(PAN|TILT|ZOOM|DOLLY|TRACK|CRANE|STEADICAM|HANDHELD)(\s+(UP|DOWN|LEFT|RIGHT|IN|OUT|FORWARD|BACKWARD|UPWARD|DOWNWARD|LEFTWARD|RIGHTWARD|INWARD|OUTWARD|FORWARDS|BACKWARDS|UPWARDS|DOWNWARDS|LEFTWARDS|RIGHTWARDS|INWARDS|OUTWARDS|CLOSE ON))?$/)) {
-    element.groupType = 'camera';
+  } else if (firstLine.match(/^(PAN|TILT|ZOOM|DOLLY|TRACK|CRANE|STEADICAM|HANDHELD)(\s+(-|\s+)(UP|DOWN|LEFT|RIGHT|IN|OUT|FORWARD|BACKWARD|UPWARD|DOWNWARD|LEFTWARD|RIGHTWARD|INWARD|OUTWARD|FORWARDS|BACKWARDS|UPWARDS|DOWNWARDS|LEFTWARDS|RIGHTWARDS|INWARDS|OUTWARDS|CLOSE ON))?$/)) {
+        element.groupType = 'camera';
   } else if (firstLine.match(/\b[A-Z]+ING\b$/)) { // Check if the word ends with ING (capitalized)
     element.groupType = 'action'; // Set the type of the element to 'action'
   }
@@ -108,4 +108,20 @@ export const parseElements = async (sceneParse) => {
   });
 
   return sceneParse;
+};
+
+export const sortElementType = async (sceneParse) => {
+  sceneParse.scenes.forEach((scene) => {
+    const elements = scene.elements;
+    elements.forEach((element) => {
+      if (element.groupType === 'prop') {
+        const propItems = element.elementRawLines.map((line) => line.lineText.trim());
+        scene.props = propItems.map((propItem) => ({ propItem }));
+      }
+      if (element.groupType === 'dialogue') {
+        const dialogueItems = element.elementRawLines.map((line) => line.lineText.trim());
+        scene.cast = dialogueItems.map((dialogueItem) => ({ dialogueItem }));
+      }
+    });
+  });
 };
