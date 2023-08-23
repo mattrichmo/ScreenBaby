@@ -1,6 +1,6 @@
 export const parseTitles = async (docRaw, script) => {
     let foundTitle = false;
-  
+
     for (const page of docRaw.pagesRaw) {
       for (const line of page.pageLines) {
         if (line.lineText.trim() !== "") {
@@ -71,9 +71,6 @@ export const parseAuthors = async (docRaw, script) => {
     }
 };
 
-
-
-  
 export const  finalFormat = async (sceneParse) => {
     const script = {
       scriptTitle: '', // Add your script title here
@@ -88,10 +85,10 @@ export const  finalFormat = async (sceneParse) => {
         numDialogueLines: 0,
       }, // You can populate docMeta as needed
     };
-  
+
     // Create a mapping to track characters and their appearances
     const characterMap = {};
-  
+
     // Loop through each scene
     sceneParse.scenes.forEach((scene, sceneIndex) => {
       // Loop through each character in the scene's cast
@@ -113,7 +110,7 @@ export const  finalFormat = async (sceneParse) => {
             parentSceneIndex: scene.sceneIndex,
             parentSceneLines: character.characterLines,
           };
-          
+
           characterMap[character.characterName] = {
             charName: character.characterName,
             charAppearances: [charAppearance],
@@ -122,7 +119,7 @@ export const  finalFormat = async (sceneParse) => {
         }
       });
     });
-  
+
     // Convert the characterMap into an array and assign it to script.cast
     script.cast = Object.values(characterMap);  
     return script;
@@ -132,6 +129,5 @@ export const finalParse = async (docRaw, sceneParse) => {
     const script = await finalFormat(sceneParse);
     await parseTitles(docRaw, script);
     await parseAuthors(docRaw, script);
-    console.log('Script title', script.scriptTitle);
-    console.log('script author', script.scriptAuthor)
+    return script; // Add this line to return the script object
 };

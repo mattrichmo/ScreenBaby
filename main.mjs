@@ -1,10 +1,10 @@
 import { loadPDF, readPDFToJson } from './components/LoadUtils.mjs';
 import { createCharObjects, combineCharData, parsePageLinesCharData, parseLinesCharData } from './components/CleanUtils.mjs';
-import { parseScenes, cleanScenes, updateSceneHeaders } from './components/ParseUtils.mjs';
+import { parseScenes, cleanScenes, updateSceneHeaders, parseTitles } from './components/ParseUtils.mjs';
 import { parseElements, sortElementType } from './components/ElementHelper.mjs';
 import { prettyLog } from './components/PrettyLog.mjs';
 import { sceneDataExtraction } from './components/sceneDataExtraction.mjs';
-import { finalParse } from './components/FinalFormat.mjs';
+import { finalFormat, finalParse } from './components/FinalFormat.mjs';
 import { saveToDatabase } from './components/DB.mjs';
 import { startServer } from './components/Server.mjs';
 
@@ -283,9 +283,10 @@ const main = async (docRaw, sceneParse) => {
   await sortElementType(sceneParse);
   await sceneDataExtraction(sceneParse);
 
-  await finalParse(docRaw, sceneParse);
+  const script = await finalParse(docRaw,sceneParse);
+  await prettyLog (script);
 
   //prettyLog(docRaw, script); // Pass docRaw and script to prettyLog
-  console.log (JSON.stringify(docRaw.pagesRaw, null, 2))
+  //console.log (JSON.stringify(docRaw.pagesRaw, null, 2))
 };
 main(docRaw, sceneParse,);
