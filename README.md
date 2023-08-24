@@ -1,6 +1,6 @@
 # ScreenBaby
 
-![](./img/banner2.jpg)
+![](./img/banner2-01.jpg)
 
 ##  > Terrible Name. Great Product. 
 
